@@ -25,7 +25,7 @@ def getCubes():
     del textures[0]
 
     # limit to 200 nodules out of ~1200
-    #del textures[200:]
+    #del textures[50:]
 
     #count = 0
 
@@ -34,7 +34,7 @@ def getCubes():
         
         # limit to 200 nodules out of ~1200
         #count += 1
-        #if count > 200:
+        #if count > 50:
         #    break
         
         current_ID = line[0]
@@ -78,48 +78,91 @@ def getFileID(id):
         file_name += '0'
 
     return file_name + id
+
+
+def parseTrainingData(cubeList, textures):
+    # put data in correct format
+    valid_cube_list = np.array(cubeList).reshape(-1, 80, 80, 80, 1)
+    valid_cube_list = valid_cube_list.astype(float)
+
+    print(valid_cube_list[0])
+
+    valid_cube_list = (valid_cube_list - np.min(valid_cube_list))/np.ptp(valid_cube_list)
+
+    print(valid_cube_list[0])
+
+    # put labels in correct format
+    textures = np.array(textures)
+    textures = textures.astype(float)
+
+    valid_textures = np.zeros((textures.__len__(), 3), dtype=int)
+
+    for i in range(textures.__len__()):
+        texture_value = textures[i]
+        if texture_value < 2.33:
+            valid_textures[i, 0] = 1
+        elif texture_value < 3.66:
+            valid_textures[i, 1] = 1
+        else:
+            valid_textures[i, 2] = 1
+
+
+    return valid_cube_list, valid_textures
+
+def createModel():
+    model = Sequential()
+
+    '''#model.add(Conv3D(256, (8, 8, 8), input_shape=(80,80,80,1)))
+    model.add(Conv3D(32, (8, 8, 8), input_shape=(80,80,80,1)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+
+    #model.add(Conv3D(256, (8, 8, 8)))
+    model.add(Conv3D(16, (8, 8, 8)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+
+    model.add(Conv3D(16, (8, 8, 8)))
+    model.add(Activation('relu'))
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))'''
+
+    model.add(Conv3D(8, (3, 3, 3), input_shape=(80,80,80,1)))
+    #model.add(Activation('softsign'))
+    #model.add(Activation('relu'))
+    #model.add(Activation('linear'))
+    model.add(MaxPooling3D(pool_size=(3, 3, 3)))
+
+    model.add(Conv3D(20, (2, 2, 2)))
+    #model.add(Activation('softsign'))
+    #model.add(Activation('relu'))
+    #model.add(Activation('linear'))
+    model.add(MaxPooling3D(pool_size=(5, 5, 5)))
+
+    #model.add(Conv3D(8, (5, 5, 5)))
+    #model.add(Activation('linear'))
+    #model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+
+    print(model.output_shape)
+    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
+    print(model.output_shape)
+
+
+    #model.add(Dense(n_neurons, activation='sigmoid'))
+    model.add(Dense(1250, activation='linear')) # nao influenciou tava linear, max 0.72, end=0.69
+    #model.add(Dense(16))
+
+    model.add(Dense(3))
+    model.add(Activation('softmax'))
+
+    model.compile(loss='binary_crossentropy',
+                optimizer='adam',
+                metrics=['accuracy'])
+    
+    return model
+
+
 #print(scan,spacing,origin,transfmat)
 
-#TODO: passar so cubo
-#input_shape=(512,512,328)
-#model = models.Sequential()
-#model.add(layers.Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
-#                 activation='relu',
- #                input_shape=input_shape))
-#model.add(layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-#model.add(layers.Conv2D(64, (5, 5), activation='relu'))
-#model.add(layers.MaxPooling2D(pool_size=(2, 2)))
-#model.add(layers.Flatten())
-#model.add(layers.Dense(1000, activation='relu'))
-#model.add(layers.Dense(num_classes, activation='softmax'))
-
-# model.compile(loss=keras.losses.categorical_crossentropy,
-              # optimizer=keras.optimizers.SGD(lr=0.01),
-              # metrics=['accuracy'])
-
-# model.fit(x_train, y_train,
-          # batch_size=batch_size,
-          # epochs=epochs,
-          # verbose=1,
-          # validation_data=(x_test, y_test),
-          # callbacks=[history])
-
-# score = model.evaluate(x_test, y_test, verbose=0)
-# print('Test loss:', score[0])
-# print('Test accuracy:', score[1])
-
-# class AccuracyHistory(keras.callbacks.Callback):
-    # def on_train_begin(self, logs={}):
-        # self.acc = []
-    # def on_epoch_end(self, batch, logs={}):
-        # self.acc.append(logs.get('acc'))
-
-# history = AccuracyHistory()
-
-# plt.plot(range(1,11), history.acc)
-# plt.xlabel('Epochs')
-# plt.ylabel('Accuracy')
-# plt.show()
 
 # list available gpus in order to limit memory allocation
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -135,36 +178,16 @@ if gpus:
 
 cubeList, textures = getCubes()
 
-model = Sequential()
+valid_cube_list, valid_textures = parseTrainingData(cubeList, textures)
 
-#model.add(Conv3D(256, (8, 8, 8), input_shape=(80,80,80,1)))
-model.add(Conv3D(32, (8, 8, 8), input_shape=(80,80,80,1)))
-model.add(Activation('relu'))
-model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+model = createModel()
 
-#model.add(Conv3D(256, (8, 8, 8)))
-model.add(Conv3D(32, (8, 8, 8)))
-model.add(Activation('relu'))
-model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+model.fit(valid_cube_list, valid_textures, batch_size=1, epochs=16, validation_split=0.3)
 
-model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
 
-model.add(Dense(64))
-#model.add(Dense(16))
+to_predict = np.array([valid_cube_list[0]]).reshape(-1, 80, 80, 80, 1)
+predictions = model.predict(to_predict)
 
-model.add(Dense(1))
-model.add(Activation('sigmoid'))
-
-model.compile(loss='binary_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy'])
-
-# put data in correct format
-valid_cube_list = np.array(cubeList).reshape(-1, 80, 80, 80, 1)
-valid_cube_list = valid_cube_list.astype(int)
-
-# put labels in correct format
-valid_textures = np.array(textures)
-valid_textures = valid_textures.astype(float)
-
-model.fit(valid_cube_list, valid_textures, batch_size=8, epochs=10, validation_split=0.3)
+print(predictions[0])
+print(np.argmax(predictions[0]))
+print(valid_textures[0])
