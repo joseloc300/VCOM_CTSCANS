@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from tensorflow.keras import datasets, layers, models
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten
+from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization
 from tensorflow.keras.layers import Conv3D, MaxPooling3D
 
 import matplotlib.pyplot as plt
@@ -25,17 +25,18 @@ def getCubes():
     del textures[0]
 
     # limit to 200 nodules out of ~1200
-    #del textures[50:]
+    max_nodules = 50
+    del textures[max_nodules:]
 
-    #count = 0
+    count = 0
 
     # ignore header
     for line in csvLines[1:]:
         
         # limit to 200 nodules out of ~1200
-        #count += 1
-        #if count > 50:
-        #    break
+        count += 1
+        if count > max_nodules:
+            break
         
         current_ID = line[0]
         if last_ID != current_ID:
@@ -50,7 +51,7 @@ def getCubes():
         nodule_z = (float(finding_coords[2]) - float(origin[2])) / float(spacing[2])
         real_coords = [nodule_x, nodule_y, nodule_z]
 
-        scan_cube = utils.extractCube(scan, spacing, real_coords)
+        scan_cube = utils.extractCube(scan, spacing, real_coords, cube_size=60)
         
         #np.append(cubeList, scan_cube)
         cubeList.append(scan_cube)
@@ -82,14 +83,12 @@ def getFileID(id):
 
 def parseTrainingData(cubeList, textures):
     # put data in correct format
-    valid_cube_list = np.array(cubeList).reshape(-1, 80, 80, 80, 1)
+    valid_cube_list = np.array(cubeList).reshape(-1, 60, 60, 60, 1)
     valid_cube_list = valid_cube_list.astype(float)
 
-    print(valid_cube_list[0])
-
-    valid_cube_list = (valid_cube_list - np.min(valid_cube_list))/np.ptp(valid_cube_list)
-
-    print(valid_cube_list[0])
+    #print(valid_cube_list[0])
+    #valid_cube_list = (valid_cube_list - np.min(valid_cube_list))/np.ptp(valid_cube_list)
+    #print(valid_cube_list[0])
 
     # put labels in correct format
     textures = np.array(textures)
@@ -112,8 +111,8 @@ def parseTrainingData(cubeList, textures):
 def createModel():
     model = Sequential()
 
-    '''#model.add(Conv3D(256, (8, 8, 8), input_shape=(80,80,80,1)))
-    model.add(Conv3D(32, (8, 8, 8), input_shape=(80,80,80,1)))
+    '''#model.add(Conv3D(256, (8, 8, 8), input_shape=(60,60,60,1)))
+    model.add(Conv3D(32, (8, 8, 8), input_shape=(60,60,60,1)))
     model.add(Activation('relu'))
     model.add(MaxPooling3D(pool_size=(2, 2, 2)))
 
@@ -126,31 +125,33 @@ def createModel():
     model.add(Activation('relu'))
     model.add(MaxPooling3D(pool_size=(2, 2, 2)))'''
 
-    model.add(Conv3D(8, (3, 3, 3), input_shape=(80,80,80,1)))
-    #model.add(Activation('softsign'))
-    #model.add(Activation('relu'))
-    #model.add(Activation('linear'))
-    model.add(MaxPooling3D(pool_size=(3, 3, 3)))
+    model.add(Conv3D(64, (3, 3, 3), input_shape=(60,60,60,1)))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.25))
 
-    model.add(Conv3D(20, (2, 2, 2)))
-    #model.add(Activation('softsign'))
-    #model.add(Activation('relu'))
-    #model.add(Activation('linear'))
-    model.add(MaxPooling3D(pool_size=(5, 5, 5)))
+    model.add(Conv3D(128, (3, 3, 3)))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.25))
 
-    #model.add(Conv3D(8, (5, 5, 5)))
-    #model.add(Activation('linear'))
-    #model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Conv3D(256, (3, 3, 3)))
+    model.add(Activation('relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.25))
 
     print(model.output_shape)
     model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
     print(model.output_shape)
 
+    model.add(Dense(4096))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.50))
 
-    #model.add(Dense(n_neurons, activation='sigmoid'))
-    model.add(Dense(1250, activation='linear')) # nao influenciou tava linear, max 0.72, end=0.69
-    #model.add(Dense(16))
-
+    # Output layer
     model.add(Dense(3))
     model.add(Activation('softmax'))
 
@@ -185,7 +186,7 @@ model = createModel()
 model.fit(valid_cube_list, valid_textures, batch_size=1, epochs=16, validation_split=0.3)
 
 
-to_predict = np.array([valid_cube_list[0]]).reshape(-1, 80, 80, 80, 1)
+to_predict = np.array([valid_cube_list[0]]).reshape(-1, 60, 60, 60, 1)
 predictions = model.predict(to_predict)
 
 print(predictions[0])
