@@ -4,6 +4,9 @@ LNDb dataset/
 # submission example
 submission/
 
+# models
+models/
+
 # VSCode files
 .vscode/
 
