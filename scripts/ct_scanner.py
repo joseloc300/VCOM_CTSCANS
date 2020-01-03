@@ -86,7 +86,74 @@ def getTextures(count):
         del textures[count:]
 
     return textures
-            
+
+def getMaskedCubes():
+
+    csvLines = utils.readCsv("../trainset_csv/trainNodules_gt.csv")
+    last_ID = 0
+    scan = 0
+    spacing = 0
+    origin = 0
+
+    maskedCubeList = []  
+
+    # ignore header
+    for line in csvLines[1:]:
+        
+        # get image of this patient only one time (there are repeated patient ids)
+        current_ID = line[0]
+        if last_ID != current_ID:
+            print(getFileID(current_ID))
+            scan,spacing,origin,_ = utils.readMhd('../LNDb dataset/dataset/LNDb-' + getFileID(current_ID) + '.mhd')
+            spacing = [float(spacing[i]) for i in range(3)]
+
+        # find the coordinates of the current nodule (it is done for every line of the csv)
+        finding_coords = line[4:7]
+        
+        nodule_x = (float(finding_coords[0]) - float(origin[0])) / float(spacing[0])
+        nodule_y = (float(finding_coords[1]) - float(origin[1])) / float(spacing[1])
+        nodule_z = (float(finding_coords[2]) - float(origin[2])) / float(spacing[2])
+        real_coords = [nodule_x, nodule_y, nodule_z]
+
+        # get a mask for the image of this patient (from one of the radiologists that found the current nodule)
+        radiologists = line[1] # list of radiologists that found the current nodule
+        radId = str(radiologists[0]) # always choose the mask from the first radiologist in the list
+        mask,_,_,_ = utils.readMhd('../LNDb dataset/masks/LNDb-' + getFileID(current_ID) + '_rad' + radId + '.mhd')
+
+        # filter the whole image scan by the mask
+        short_min = -32768 # lowest signed short value
+        masked_scan = np.where(mask == 0, short_min, scan)
+    
+        # extract mini cube of the current nodule on the masked scan
+        masked_cube = utils.extractCube(masked_scan, spacing, real_coords, cube_size=80)
+
+        # add masked cubed to the list
+        maskedCubeList.append(masked_cube)
+
+        last_ID = current_ID
+    
+    return maskedCubeList
+
+def saveMaskedCubes(maskedCubeList):
+    for i in range(maskedCubeList.__len__()):
+        masked_cube = maskedCubeList[i]
+        filename = "../LNDb dataset/mini_masked_cubes/masked_cube" + str(i)
+        with open(filename, 'wb') as outfile:
+            pickle.dump(masked_cube, outfile)
+
+def loadMaskedCubes(count):
+    if count == -1:
+        count = 1219
+
+    maskedCubeList = []
+    for i in range(count):
+        filename = "../LNDb dataset/mini_masked_cubes/masked_cube" + str(i)
+        with open(filename, 'rb') as infile:
+            masked_cube = pickle.load(infile)
+            maskedCubeList.append(masked_cube)
+    
+    return maskedCubeList
+
 def saveMiniCubes(cubeList):
     for i in range(cubeList.__len__()):
         cube = cubeList[i]
@@ -584,47 +651,121 @@ def createModel9():
 
     return model
 
-# list available gpus in order to limit memory allocation
-gpus = tf.config.experimental.list_physical_devices('GPU')
-if gpus:
-    try:
-        # Currently, memory growth needs to be the same across GPUs
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-            #tf.config.experimental.set_virtual_device_configuration(gpus[0],[tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
-    except RuntimeError as e:
-        # Memory growth must be set before GPUs have been initialized
-        print(e)
+def createModelA1():
+    model = Sequential()
 
-# run once to get mini cubes, create "mini_cubes" folder inside 'LNDb dataset' folder
+    model.add(Conv3D(64, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.25))
 
-#cubeList, textures = getCubes()
-#saveMiniCubes(cubeList)
-#print("done")
-#time.sleep(20)
+    model.add(Conv3D(128, (3, 3, 3), activation='relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.25))
 
-cubeList = loadMiniCubes(-1)
-textures = getTextures(-1)
+    model.add(Conv3D(256, (3, 3, 3), activation='relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    model.add(Dropout(0.25))
 
-validationSplit = 0.3
+    print(model.output_shape)
+    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
+    print(model.output_shape)
 
-valid_cube_list_training, valid_cube_list_validation, valid_textures_training, valid_textures_validation = parseTrainingData(cubeList, textures, validationSplit)
+    model.add(Dense(4096, activation='relu'))
+    model.add(Dropout(0.50))
 
-print(valid_cube_list_validation[0])
+    # Output layer
+    model.add(Dense(3), activation='softmax')
 
-print(valid_textures_validation[0])
+    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+    
+    return model
 
-model = createModel9()
-#model = tf.keras.models.load_model('../models/model7')
+def createModelA2():
+    model = Sequential()
 
-model.fit(valid_cube_list_training, valid_textures_training, batch_size=12, epochs=32, validation_data=(valid_cube_list_validation, valid_textures_validation))
+    model.add(Conv3D(12, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
+    #model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    #model.add(Dropout(0.25))
 
-# folder needs to exist before instruction is ran
-model.save('../models/model9')
+    model.add(Conv3D(24, (3, 3, 3), activation='relu'))
+    #model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    #model.add(Dropout(0.25))
 
-to_predict = np.array([valid_cube_list_validation[0]]).reshape(-1, 80, 80, 80, 1)
-predictions = model.predict(to_predict)
+    model.add(Conv3D(48, (3, 3, 3), activation='relu'))
+    #model.add(BatchNormalization())
+    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
+    #model.add(Dropout(0.25))
 
-print(predictions[0])
-print(np.argmax(predictions[0]))
-print(valid_textures_validation[0])
+    print(model.output_shape)
+    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
+    print(model.output_shape)
+
+    model.add(Dense(128, activation='relu'))
+    #model.add(Dropout(0.50))
+
+    # Output layer
+    model.add(Dense(3, activation='softmax'))
+
+    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+    
+    return model
+
+
+def main():
+    # list available gpus in order to limit memory allocation
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+                #tf.config.experimental.set_virtual_device_configuration(gpus[0],[tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)
+
+    # run once to get mini cubes, create "mini_cubes" folder inside 'LNDb dataset' folder
+
+    #cubeList, textures = getCubes()
+    #saveMiniCubes(cubeList)
+    #print("done")
+    #time.sleep(20)
+
+    # run once to get mini MASKED cubes, create "mini_masked_cubes" folder inside 'LNDb dataset' folder
+
+    #maskedCubeList = getMaskedCubes()
+    #saveMaskedCubes(maskedCubeList)
+    #print("done")
+    #time.sleep(20)
+
+    cubeList = loadMaskedCubes(-1) # change between loadMiniCubes or loadMaskedCubes
+    textures = getTextures(-1)
+
+    validationSplit = 0.3
+
+    valid_cube_list_training, valid_cube_list_validation, valid_textures_training, valid_textures_validation = parseTrainingData(cubeList, textures, validationSplit)
+
+    #print(valid_cube_list_validation[0])
+    #print(valid_textures_validation[0])
+    print("AAAAA")
+    model = createModelA2()
+    #model = tf.keras.models.load_model('../models/model7')
+    print("BBBBB")
+    model.fit(valid_cube_list_training, valid_textures_training, batch_size=2, epochs=32, validation_data=(valid_cube_list_validation, valid_textures_validation))
+
+    # folder needs to exist before instruction is ran
+    model.save('../models/modelA2')
+
+    to_predict = np.array([valid_cube_list_validation[0]]).reshape(-1, 80, 80, 80, 1)
+    predictions = model.predict(to_predict)
+
+    print(predictions[0])
+    print(np.argmax(predictions[0]))
+    print(valid_textures_validation[0])
+
+main()
