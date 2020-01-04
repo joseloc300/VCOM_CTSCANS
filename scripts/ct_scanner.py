@@ -269,26 +269,30 @@ def parseTrainingData(cubeList, textures, validationSplit):
     print("threshold_1: ", threshold_1)
     print("threshold_2: ", threshold_2)
 
+    # put textures data in correct format
     valid_textures_training = np.array(valid_textures_training)
     valid_textures_training = valid_textures_training.astype(float)
 
     valid_textures_validation = np.array(valid_textures_validation)
     valid_textures_validation = valid_textures_validation.astype(float)
 
-    # put data in correct format
-    #valid_cube_list = np.array(cubeList).reshape(-1, 80, 80, 80, 1)
-    #valid_cube_list = valid_cube_list.astype(float)
-
+    # put cube data in correct format
     valid_cube_list_training = np.array(valid_cube_list_training).reshape(-1, 80, 80, 80, 1)
     valid_cube_list_training = valid_cube_list_training.astype(float)
 
     valid_cube_list_validation = np.array(valid_cube_list_validation).reshape(-1, 80, 80, 80, 1)
     valid_cube_list_validation = valid_cube_list_validation.astype(float)
-    
 
-    #print(valid_cube_list[0])
-    #valid_cube_list = (valid_cube_list - np.min(valid_cube_list))/np.ptp(valid_cube_list)
-    #print(valid_cube_list[0])
+    # substitute lowest short value with -1500 (better for input normalization)
+    #valid_cube_list_training = np.where(valid_cube_list_training == -32768, -1500, valid_cube_list_training)
+    #valid_cube_list_validation = np.where(valid_cube_list_validation == -32768, -1500, valid_cube_list_validation)
+    
+    # Input normalization for cube data (-1 to 1, mean 0)
+    valid_cube_list_training -= np.mean(valid_cube_list_training)
+    valid_cube_list_training /= np.std(valid_cube_list_training)
+
+    valid_cube_list_validation -= np.mean(valid_cube_list_validation)
+    valid_cube_list_validation /= np.std(valid_cube_list_validation)
 
     return valid_cube_list_training, valid_cube_list_validation, valid_textures_training, valid_textures_validation
 
@@ -808,7 +812,7 @@ def main():
     model = createModelA2()
     #model = tf.keras.models.load_model('../models/model10')
 
-    model.fit(valid_cube_list_training, valid_textures_training, batch_size=2, epochs=32, validation_data=(valid_cube_list_validation, valid_textures_validation))
+    model.fit(valid_cube_list_training, valid_textures_training, batch_size=2, epochs=16, validation_data=(valid_cube_list_validation, valid_textures_validation))
 
     # folder needs to exist before instruction is ran
     model.save('../models/modelA2')
