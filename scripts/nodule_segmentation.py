@@ -186,10 +186,10 @@ def inputNormalization(input_list):
 
     return input_list
 
-def createModel(cube_dimension, output_dimention):
+def createModel(cube_dimension, output_dimension):
     model = Sequential()
 
-    block_size = cube_dimension // output_dimention
+    block_size = cube_dimension // output_dimension
 
     model.add(AveragePooling3D(pool_size=(block_size, block_size, block_size), input_shape=(cube_dimension,cube_dimension,cube_dimension,1)))
 
@@ -200,8 +200,8 @@ def createModel(cube_dimension, output_dimention):
     #model.add(Dense(128, activation='relu'))
 
     # Output layer
-    output_layer_dimention = int(math.pow(output_dimention, 3))
-    model.add(Dense(output_layer_dimention, activation='sigmoid'))
+    output_layer_dimension = int(math.pow(output_dimension, 3))
+    model.add(Dense(output_layer_dimension, activation='sigmoid'))
 
     model.compile(Adam(lr=.0001), loss='binary_crossentropy', metrics=['accuracy'])
     
@@ -221,18 +221,18 @@ def main():
             print(e)
 
     num_examples = -1 # number of cubes for training and validation (-1 means use all available cubes)
-    cube_dimension = 20 # consider only the centered sub cube with this dimention, discard the outter cube data
-    output_dimention = 10 # the final dimension to predict will be (output_dimention x output_dimention x output_dimention)
+    cube_dimension = 20 # consider only the centered sub cube with this dimension, discard the outer cube data
+    output_dimension = 10 # the final dimension to predict will be (output_dimension x output_dimension x output_dimension)
 
     # Obtain input and output lists
     cubeList = obtainCubeList(num_examples, cube_dimension)
-    maskVolumesList = obtainMaskVolumesList(num_examples, cube_dimension, output_dimention)
+    maskVolumesList = obtainMaskVolumesList(num_examples, cube_dimension, output_dimension)
 
     # Normalize inputs
     cubeList = inputNormalization(cubeList)
 
     # Create and train model
-    model = createModel(cube_dimension, output_dimention)
+    model = createModel(cube_dimension, output_dimension)
     model.fit(cubeList, maskVolumesList, batch_size=1, epochs=64, validation_split=0.3)
 
 main()
