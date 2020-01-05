@@ -1,0 +1,35 @@
+Train on 853 samples, validate on 366 samples
+Epoch 1/64
+2020-01-05 18:24:49.444354: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library cublas64_100.dll
+2020-01-05 18:25:02.537305: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library cudnn64_7.dll
+853/853 [==============================] - 54s 63ms/sample - loss: 0.1017 - accuracy: 0.9700 - val_loss: 0.0262 - val_accuracy: 0.9946
+Epoch 2/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0646 - accuracy: 0.9842 - val_loss: 0.0269 - val_accuracy: 0.9950
+Epoch 3/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0627 - accuracy: 0.9843 - val_loss: 0.0271 - val_accuracy: 0.9946
+Epoch 4/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0589 - accuracy: 0.9849 - val_loss: 0.0273 - val_accuracy: 0.9946
+Epoch 5/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0524 - accuracy: 0.9856 - val_loss: 0.0280 - val_accuracy: 0.9943
+Epoch 6/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0511 - accuracy: 0.9863 - val_loss: 0.0274 - val_accuracy: 0.9949
+Epoch 7/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0473 - accuracy: 0.9865 - val_loss: 0.0262 - val_accuracy: 0.9953
+Epoch 8/64
+853/853 [==============================] - 16s 18ms/sample - loss: 0.0449 - accuracy: 0.9870 - val_loss: 0.0300 - val_accuracy: 0.9946
+Epoch 9/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0435 - accuracy: 0.9875 - val_loss: 0.0282 - val_accuracy: 0.9953
+Epoch 10/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0388 - accuracy: 0.9879 - val_loss: 0.0296 - val_accuracy: 0.9951
+Epoch 11/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0398 - accuracy: 0.9885 - val_loss: 0.0280 - val_accuracy: 0.9953
+Epoch 12/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0370 - accuracy: 0.9888 - val_loss: 0.0284 - val_accuracy: 0.9950
+Epoch 13/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0371 - accuracy: 0.9887 - val_loss: 0.0296 - val_accuracy: 0.9951
+Epoch 14/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0324 - accuracy: 0.9901 - val_loss: 0.0319 - val_accuracy: 0.9951
+Epoch 15/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0391 - accuracy: 0.9901 - val_loss: 0.0300 - val_accuracy: 0.9950
+Epoch 16/64
+853/853 [==============================] - 15s 18ms/sample - loss: 0.0418 - accuracy: 0.9908 - val_loss: 0.0310 - val_accuracy: 0.9949

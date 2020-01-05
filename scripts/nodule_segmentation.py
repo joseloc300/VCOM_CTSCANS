@@ -179,6 +179,7 @@ def obtainMaskVolumesList(num_mask_volumes, reshape_size, final_size):
 
     return ret
 
+# performs input normalization for the given data
 def inputNormalization(input_list):
     # Input normalization for cube data (-1 to 1, mean 0)
     input_list -= np.mean(input_list)
