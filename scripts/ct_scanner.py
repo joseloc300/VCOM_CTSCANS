@@ -851,7 +851,7 @@ def main():
     model.fit(valid_cube_list_training, valid_textures_training, batch_size=1, epochs=32, validation_data=(valid_cube_list_validation, valid_textures_validation))
 
     # folder needs to exist before instruction is ran
-    model.save('../models/modelA2')
+    model.save('../models/model10.1')
 
     to_predict = np.array([valid_cube_list_validation[0]]).reshape(-1, 80, 80, 80, 1)
     predictions = model.predict(to_predict)
