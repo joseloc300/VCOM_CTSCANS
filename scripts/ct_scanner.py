@@ -369,7 +369,7 @@ def main():
     model.fit(valid_cube_list_training, valid_textures_training, batch_size=16, epochs=64, validation_data=(valid_cube_list_validation, valid_textures_validation))
 
     # folder needs to exist before instruction is ran
-    model.save('../models/modelA2-1')
+    model.save('../models/model')
 
     to_predict = np.array([valid_cube_list_validation[0]]).reshape(-1, cubeSize, cubeSize, cubeSize, 1)
     predictions = model.predict(to_predict)
