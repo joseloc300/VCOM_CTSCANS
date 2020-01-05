@@ -306,60 +306,20 @@ def createModel():
 def createModelA1():
     model = Sequential()
 
-    model.add(Conv3D(64, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    model.add(Dropout(0.25))
-
-    model.add(Conv3D(128, (3, 3, 3), activation='relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    model.add(Dropout(0.25))
-
-    model.add(Conv3D(256, (3, 3, 3), activation='relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    model.add(Dropout(0.25))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    model.add(Dense(4096, activation='relu'))
-    model.add(Dropout(0.50))
-
-    # Output layer
-    model.add(Dense(3), activation='softmax')
-
-    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-    
-    return model
-
-# for masked cubes size 80
-def createModelA2():
-    model = Sequential()
-
     model.add(Conv3D(12, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
-    #model.add(BatchNormalization())
     model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    #model.add(Dropout(0.25))
 
     model.add(Conv3D(24, (3, 3, 3), activation='relu'))
-    #model.add(BatchNormalization())
     model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    #model.add(Dropout(0.25))
 
     model.add(Conv3D(48, (3, 3, 3), activation='relu'))
-    #model.add(BatchNormalization())
     model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    #model.add(Dropout(0.25))
 
     print(model.output_shape)
     model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
     print(model.output_shape)
 
     model.add(Dense(128, activation='relu'))
-    #model.add(Dropout(0.50))
 
     # Output layer
     model.add(Dense(3, activation='softmax'))
@@ -395,7 +355,7 @@ def main():
     #print("done")
     #time.sleep(20)
 
-    cubeList = loadMiniCubes(-1) # change between loadMiniCubes and loadMaskedCubes
+    cubeList = loadMaskedCubes(-1) # change between loadMiniCubes and loadMaskedCubes
     textures = getTextures(-1)
 
     validationSplit = 0.3
@@ -403,13 +363,13 @@ def main():
 
     valid_cube_list_training, valid_cube_list_validation, valid_textures_training, valid_textures_validation = parseTrainingData(cubeList, textures, validationSplit, cubeSize)
 
-    model = createModelA2()
+    model = createModel()
     #model = tf.keras.models.load_model('../models/model')
 
-    model.fit(valid_cube_list_training, valid_textures_training, batch_size=1, epochs=64, validation_data=(valid_cube_list_validation, valid_textures_validation))
+    model.fit(valid_cube_list_training, valid_textures_training, batch_size=16, epochs=64, validation_data=(valid_cube_list_validation, valid_textures_validation))
 
     # folder needs to exist before instruction is ran
-    model.save('../models/modelA2-1')
+    model.save('../models/model')
 
     to_predict = np.array([valid_cube_list_validation[0]]).reshape(-1, cubeSize, cubeSize, cubeSize, 1)
     predictions = model.predict(to_predict)
