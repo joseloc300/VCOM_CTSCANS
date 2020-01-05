@@ -197,7 +197,8 @@ def createModel(cube_dimension, output_dimension):
     model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
     print(model.output_shape)
 
-    #model.add(Dense(128, activation='relu'))
+    model.add(Dense(1024, activation='relu'))
+    model.add(Dropout(0.5))
 
     # Output layer
     output_layer_dimension = int(math.pow(output_dimension, 3))
@@ -221,8 +222,8 @@ def main():
             print(e)
 
     num_examples = -1 # number of cubes for training and validation (-1 means use all available cubes)
-    cube_dimension = 20 # consider only the centered sub cube with this dimension, discard the outer cube data
-    output_dimension = 10 # the final dimension to predict will be (output_dimension x output_dimension x output_dimension)
+    cube_dimension = 40 # consider only the centered sub cube with this dimension, discard the outer cube data
+    output_dimension = 20 # the final dimension to predict will be (output_dimension x output_dimension x output_dimension)
 
     # Obtain input and output lists
     cubeList = obtainCubeList(num_examples, cube_dimension)
@@ -234,6 +235,9 @@ def main():
     # Create and train model
     model = createModel(cube_dimension, output_dimension)
     model.fit(cubeList, maskVolumesList, batch_size=1, epochs=64, validation_split=0.3)
+
+    # folder needs to exist before instruction is ran
+    model.save('../models/segmentationD')
 
 main()
 
