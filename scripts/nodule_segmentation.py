@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from skimage.measure import block_reduce
 
+# loads the nodule's cubes from their files
 def loadMiniCubes(count):
     if count == -1:
         count = 1219
@@ -31,6 +32,7 @@ def loadMiniCubes(count):
     
     return cubeList
 
+# gets the id in the same format as the image's names
 def getFileID(id):
     id_digits = len(id)
     zeros = 4 - id_digits
@@ -40,6 +42,7 @@ def getFileID(id):
 
     return file_name + id
 
+# returns the list of all 80x80x80 masks
 def getMaskVolumes():
 
     csvLines = utils.readCsv("../trainset_csv/trainNodules_gt.csv")
@@ -83,6 +86,7 @@ def getMaskVolumes():
     
     return maskVolumesList
 
+# writes the nodule's masks to individual files
 def saveMaskVolumes(maskVolumesList):
     for i in range(maskVolumesList.__len__()):
         mask_volume = maskVolumesList[i]
@@ -90,6 +94,7 @@ def saveMaskVolumes(maskVolumesList):
         with open(filename, 'wb') as outfile:
             pickle.dump(mask_volume, outfile)
 
+# loads the masks from their files
 def loadMaskVolumes(count):
     if count == -1:
         count = 1219
@@ -108,6 +113,7 @@ def getAndSaveMaskVolumes():
     maskVolumesList = getMaskVolumes()
     saveMaskVolumes(maskVolumesList)
 
+# loads and reshapes nodule's cubes
 def obtainCubeList(num_cubes, reshape_size):
     # load 80x80x80 cubes
     cubeList = loadMiniCubes(num_cubes)
@@ -123,30 +129,10 @@ def obtainCubeList(num_cubes, reshape_size):
 
     return cubeList
 
+# loads, reshapes masks and then applies max pooling until their shape is (final_size, final_size, final_size)
 def obtainMaskVolumesList(num_mask_volumes, reshape_size, final_size):
     # load 80x80x80 masks
     maskVolumesList = loadMaskVolumes(num_mask_volumes)
-
-    '''newMaskVolumeList = []#np.zeros([num_mask_volumes, math.pow(reshape_size, 3)])
-
-    cube_size = 80 // reshape_size
-    for mask in maskVolumesList:
-        new_mask = []
-        for x in range(reshape_size):
-            for y in range(reshape_size):
-                for z in range(reshape_size):
-                    value = 0
-                    for real_x in range(cube_size):
-                        for real_y in range(cube_size):
-                            for real_z in range(cube_size):
-                                if mask[x * reshape_size + real_x, y * reshape_size + real_y, z * reshape_size + real_z] == 1:
-                                    value = 1
-                    new_mask.append(value)
-        
-        newMaskVolumeList.append(new_mask)
-
-    newMaskVolumeList = np.array(newMaskVolumeList)
-    newMaskVolumeList = newMaskVolumeList.astype(float)'''
 
     # put masks in correct format
     maskVolumesList = np.array(maskVolumesList).reshape(-1, 80, 80, 80)
@@ -179,6 +165,7 @@ def obtainMaskVolumesList(num_mask_volumes, reshape_size, final_size):
 
     return ret
 
+# performs input normalization for the given data
 def inputNormalization(input_list):
     # Input normalization for cube data (-1 to 1, mean 0)
     input_list -= np.mean(input_list)
@@ -186,6 +173,7 @@ def inputNormalization(input_list):
 
     return input_list
 
+# creates the model according to the given parameters
 def createModel(cube_dimension, output_dimension):
     model = Sequential()
 
@@ -197,7 +185,8 @@ def createModel(cube_dimension, output_dimension):
     model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
     print(model.output_shape)
 
-    #model.add(Dense(128, activation='relu'))
+    #model.add(Dense(1024, activation='relu'))
+    #model.add(Dropout(0.5))
 
     # Output layer
     output_layer_dimension = int(math.pow(output_dimension, 3))
@@ -221,8 +210,8 @@ def main():
             print(e)
 
     num_examples = -1 # number of cubes for training and validation (-1 means use all available cubes)
-    cube_dimension = 20 # consider only the centered sub cube with this dimension, discard the outer cube data
-    output_dimension = 10 # the final dimension to predict will be (output_dimension x output_dimension x output_dimension)
+    cube_dimension = 40 # consider only the centered sub cube with this dimension, discard the outer cube data
+    output_dimension = 20 # the final dimension to predict will be (output_dimension x output_dimension x output_dimension)
 
     # Obtain input and output lists
     cubeList = obtainCubeList(num_examples, cube_dimension)
@@ -234,6 +223,9 @@ def main():
     # Create and train model
     model = createModel(cube_dimension, output_dimension)
     model.fit(cubeList, maskVolumesList, batch_size=1, epochs=64, validation_split=0.3)
+
+    # folder needs to exist before instruction is ran
+    model.save('../models/segmentationD')
 
 main()
 

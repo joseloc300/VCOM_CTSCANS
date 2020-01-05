@@ -17,6 +17,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 
+# returns the list of all 80x80x80 cubes and their respective textures
 def getCubes(cubeSize):
     csvLines = utils.readCsv("../trainset_csv/trainNodules_gt.csv")
     last_ID = 0
@@ -55,6 +56,7 @@ def getCubes(cubeSize):
     
     return cubeList, textures
 
+# returns the list of textures with length count 
 def getTextures(count):
     csvLines = utils.readCsv("../trainset_csv/trainNodules_gt.csv")
     textures = [row[-1] for row in csvLines]
@@ -66,6 +68,7 @@ def getTextures(count):
 
     return textures
 
+# returns the list of all 80x80x80 cubes filtered by their respective masks
 def getMaskedCubes():
 
     csvLines = utils.readCsv("../trainset_csv/trainNodules_gt.csv")
@@ -113,6 +116,7 @@ def getMaskedCubes():
     
     return maskedCubeList
 
+# writes the nodule's masked cubes to individual files
 def saveMaskedCubes(maskedCubeList):
     for i in range(maskedCubeList.__len__()):
         masked_cube = maskedCubeList[i]
@@ -120,6 +124,7 @@ def saveMaskedCubes(maskedCubeList):
         with open(filename, 'wb') as outfile:
             pickle.dump(masked_cube, outfile)
 
+# loads the masked cubes from their files
 def loadMaskedCubes(count):
     if count == -1:
         count = 1219
@@ -133,6 +138,7 @@ def loadMaskedCubes(count):
     
     return maskedCubeList
 
+# writes the nodule's cubes to individual files
 def saveMiniCubes(cubeList):
     for i in range(cubeList.__len__()):
         cube = cubeList[i]
@@ -140,6 +146,7 @@ def saveMiniCubes(cubeList):
         with open(filename, 'wb') as outfile:
             pickle.dump(cube, outfile)
 
+# loads the nodule's cubes from their files
 def loadMiniCubes(count):
     if count == -1:
         count = 1219
@@ -153,6 +160,7 @@ def loadMiniCubes(count):
     
     return cubeList
 
+# gets the id in the same format as the image's names
 def getFileID(id):
     id_digits = len(id)
     zeros = 4 - id_digits
@@ -162,7 +170,7 @@ def getFileID(id):
 
     return file_name + id
 
-
+# parses the training data into correct formats and splitting them into training and validation
 def parseTrainingData(cubeList, textures, validationSplit, cubeSize):
     texture_counter = [0, 0, 0]
 
@@ -198,9 +206,6 @@ def parseTrainingData(cubeList, textures, validationSplit, cubeSize):
     count_1 = 0
     count_2 = 0
 
-    count_t = 0
-    count_v = 0
-
     threshold_0 = math.floor(validationSplit * texture_counter[0])
     threshold_1 = math.floor(validationSplit * texture_counter[1])
     threshold_2 = validation_size - (threshold_0 + threshold_1)
@@ -211,34 +216,27 @@ def parseTrainingData(cubeList, textures, validationSplit, cubeSize):
             if count_0 < threshold_0:
                 valid_cube_list_validation.append(cubeList[i])
                 valid_textures_validation.append([1, 0, 0])
-                count_v += 1
             else:
                 valid_cube_list_training.append(cubeList[i])
                 valid_textures_training.append([1, 0, 0])
-                count_t += 1
             count_0 += 1
         elif texture_value < 3.66:
             if count_1 < threshold_1:
                 valid_cube_list_validation.append(cubeList[i])
                 valid_textures_validation.append([0, 1, 0])
-                count_v += 1
             else:
                 valid_cube_list_training.append(cubeList[i])
                 valid_textures_training.append([0, 1, 0])
-                count_t += 1
             count_1 += 1
         else:
             if count_2 < threshold_2:
                 valid_cube_list_validation.append(cubeList[i])
                 valid_textures_validation.append([0, 0, 1])
-                count_v += 1
             else:
                 valid_cube_list_training.append(cubeList[i])
                 valid_textures_training.append([0, 0, 1])
-                count_t += 1
             count_2 += 1
     
-
     print("Total size: ", textures.__len__())
     print("validation size: ", validation_size)
     print("training size: ", training_size)
@@ -261,12 +259,8 @@ def parseTrainingData(cubeList, textures, validationSplit, cubeSize):
 
     valid_cube_list_validation = np.array(valid_cube_list_validation).reshape(-1, cubeSize, cubeSize, cubeSize, 1)
     valid_cube_list_validation = valid_cube_list_validation.astype(float)
-
-    # substitute lowest short value with -1500 (better for input normalization)
-    #valid_cube_list_training = np.where(valid_cube_list_training == -32768, -1500, valid_cube_list_training)
-    #valid_cube_list_validation = np.where(valid_cube_list_validation == -32768, -1500, valid_cube_list_validation)
     
-    # Input normalization for cube data (-1 to 1, mean 0)
+    # Input normalization for cube data
     valid_cube_list_training -= np.mean(valid_cube_list_training)
     valid_cube_list_training /= np.std(valid_cube_list_training)
 
@@ -369,14 +363,13 @@ def main():
 
     valid_cube_list_training, valid_cube_list_validation, valid_textures_training, valid_textures_validation = parseTrainingData(cubeList, textures, validationSplit, cubeSize)
 
-    model = createModelA2()
-    #model = tf.keras.models.load_model('../models/modelA2')
+    model = createModel()
+    #model = tf.keras.models.load_model('../models/model')
 
-
-    model.fit(valid_cube_list_training, valid_textures_training, batch_size=4, epochs=8, validation_data=(valid_cube_list_validation, valid_textures_validation))
+    model.fit(valid_cube_list_training, valid_textures_training, batch_size=16, epochs=64, validation_data=(valid_cube_list_validation, valid_textures_validation))
 
     # folder needs to exist before instruction is ran
-    model.save('../models/modelA2')
+    model.save('../models/modelA2-1')
 
     to_predict = np.array([valid_cube_list_validation[0]]).reshape(-1, cubeSize, cubeSize, cubeSize, 1)
     predictions = model.predict(to_predict)
