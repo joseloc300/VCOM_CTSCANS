@@ -308,7 +308,7 @@ def createModel():
 
     return model
 
-# for cubes size 80
+# for masked cubes size 80
 def createModelA1():
     model = Sequential()
 
@@ -341,7 +341,7 @@ def createModelA1():
     
     return model
 
-# for cubes size 80
+# for masked cubes size 80
 def createModelA2():
     model = Sequential()
 
