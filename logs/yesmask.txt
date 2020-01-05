@@ -1,0 +1,18 @@
+Epoch 1/8
+2020-01-05 22:19:53.607839: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library cublas64_100.dll
+2020-01-05 22:19:54.476480: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library cudnn64_7.dll
+854/854 [==============================] - 36s 43ms/sample - loss: 0.7348 - accuracy: 0.7354 - val_loss: 0.6826 - val_accuracy: 0.8219
+Epoch 2/8
+854/854 [==============================] - 30s 35ms/sample - loss: 0.5383 - accuracy: 0.8244 - val_loss: 0.6380 - val_accuracy: 0.8548
+Epoch 3/8
+854/854 [==============================] - 30s 35ms/sample - loss: 0.4681 - accuracy: 0.8419 - val_loss: 0.6602 - val_accuracy: 0.8630
+Epoch 4/8
+854/854 [==============================] - 30s 35ms/sample - loss: 0.4174 - accuracy: 0.8525 - val_loss: 0.7508 - val_accuracy: 0.8630
+Epoch 5/8
+854/854 [==============================] - 30s 35ms/sample - loss: 0.3996 - accuracy: 0.8712 - val_loss: 0.6090 - val_accuracy: 0.8438
+Epoch 6/8
+854/854 [==============================] - 30s 35ms/sample - loss: 0.3537 - accuracy: 0.8829 - val_loss: 0.8127 - val_accuracy: 0.8575
+Epoch 7/8
+854/854 [==============================] - 30s 35ms/sample - loss: 0.3301 - accuracy: 0.8852 - val_loss: 0.6875 - val_accuracy: 0.8329
+Epoch 8/8
+854/854 [==============================] - 30s 35ms/sample - loss: 0.3024 - accuracy: 0.8946 - val_loss: 0.7507 - val_accuracy: 0.8411
