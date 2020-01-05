@@ -187,6 +187,7 @@ def inputNormalization(input_list):
 
     return input_list
 
+# creates the model according to the given parameters
 def createModel(cube_dimension, output_dimension):
     model = Sequential()
 
@@ -198,8 +199,8 @@ def createModel(cube_dimension, output_dimension):
     model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
     print(model.output_shape)
 
-    model.add(Dense(1024, activation='relu'))
-    model.add(Dropout(0.5))
+    #model.add(Dense(1024, activation='relu'))
+    #model.add(Dropout(0.5))
 
     # Output layer
     output_layer_dimension = int(math.pow(output_dimension, 3))
