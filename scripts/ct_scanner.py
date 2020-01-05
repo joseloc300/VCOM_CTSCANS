@@ -17,7 +17,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 
-def getCubes():
+def getCubes(cubeSize):
     csvLines = utils.readCsv("../trainset_csv/trainNodules_gt.csv")
     last_ID = 0
     scan = 0
@@ -27,23 +27,12 @@ def getCubes():
     cubeList = []    
     textures = [row[-1] for row in csvLines]
 
-    # delete 1st element
+    # delete 1st element (header)
     del textures[0]
-
-    # limit to 200 nodules out of ~1200
-    max_nodules = 1600
-    del textures[max_nodules:]
-
-    count = 0
 
     # ignore header
     for line in csvLines[1:]:
-        
-        # limit to 200 nodules out of ~1200
-        count += 1
-        if count > max_nodules:
-            break
-        
+                
         current_ID = line[0]
         if last_ID != current_ID:
             print(getFileID(current_ID))
@@ -57,21 +46,11 @@ def getCubes():
         nodule_z = (float(finding_coords[2]) - float(origin[2])) / float(spacing[2])
         real_coords = [nodule_x, nodule_y, nodule_z]
 
-        scan_cube = utils.extractCube(scan, spacing, real_coords, cube_size=80)
+        scan_cube = utils.extractCube(scan, spacing, real_coords, cube_size=cubeSize)
         
-        #np.append(cubeList, scan_cube)
         cubeList.append(scan_cube)
-        
-        #_, axs = plt.subplots(2,3)
-        #axs[0,0].imshow(scan_cube[int(scan_cube.shape[0]/2),:,:], cmap=plt.cm.binary)
-        #axs[1,0].imshow(scan_cube[int(scan_cube.shape[0]/2),:,:], cmap=plt.cm.binary)
-        #axs[0,1].imshow(scan_cube[:,int(scan_cube.shape[1]/2),:], cmap=plt.cm.binary)
-        #axs[1,1].imshow(scan_cube[:,int(scan_cube.shape[1]/2),:], cmap=plt.cm.binary)
-        #axs[0,2].imshow(scan_cube[:,:,int(scan_cube.shape[2]/2)], cmap=plt.cm.binary)
-        #axs[1,2].imshow(scan_cube[:,:,int(scan_cube.shape[2]/2)], cmap=plt.cm.binary)    
-        #plt.show()
 
-        #nodule_coords
+        # nodule_coords
         last_ID = current_ID
     
     return cubeList, textures
@@ -184,7 +163,7 @@ def getFileID(id):
     return file_name + id
 
 
-def parseTrainingData(cubeList, textures, validationSplit):
+def parseTrainingData(cubeList, textures, validationSplit, cubeSize):
     texture_counter = [0, 0, 0]
 
     # put labels in correct format
@@ -277,10 +256,10 @@ def parseTrainingData(cubeList, textures, validationSplit):
     valid_textures_validation = valid_textures_validation.astype(float)
 
     # put cube data in correct format
-    valid_cube_list_training = np.array(valid_cube_list_training).reshape(-1, 80, 80, 80, 1)
+    valid_cube_list_training = np.array(valid_cube_list_training).reshape(-1, cubeSize, cubeSize, cubeSize, 1)
     valid_cube_list_training = valid_cube_list_training.astype(float)
 
-    valid_cube_list_validation = np.array(valid_cube_list_validation).reshape(-1, 80, 80, 80, 1)
+    valid_cube_list_validation = np.array(valid_cube_list_validation).reshape(-1, cubeSize, cubeSize, cubeSize, 1)
     valid_cube_list_validation = valid_cube_list_validation.astype(float)
 
     # substitute lowest short value with -1500 (better for input normalization)
@@ -296,379 +275,14 @@ def parseTrainingData(cubeList, textures, validationSplit):
 
     return valid_cube_list_training, valid_cube_list_validation, valid_textures_training, valid_textures_validation
 
+# for cubes size 80
 def createModel():
-    model = Sequential()
-
-    '''#model.add(Conv3D(256, (8, 8, 8), input_shape=(60,60,60,1)))
-    model.add(Conv3D(32, (8, 8, 8), input_shape=(60,60,60,1)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    #model.add(Conv3D(256, (8, 8, 8)))
-    model.add(Conv3D(16, (8, 8, 8)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(16, (8, 8, 8)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))'''
-
-    model.add(Conv3D(12, (7, 7, 7), input_shape=(80,80,80,1)))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    #model.add(Dropout(0.05))
-
-    model.add(Conv3D(18, (8, 8, 8)))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    #model.add(Dropout(0.05))
-
-    model.add(Conv3D(24, (11, 11, 11)))
-    model.add(Activation('relu'))
-    model.add(BatchNormalization())
-    #model.add(MaxPooling3D(pool_size=(4, 4, 4)))
-    #model.add(Dropout(0.05))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    model.add(Dropout(0.15))
-    model.add(Dense(40))
-    model.add(Dropout(0.15))
-    model.add(Dense(15))
-    #model.add(Dense(10))
-    #model.add(Dense(4))
-    #model.add(Activation('relu'))
-    #model.add(Dropout(0.05))
-
-    # Output layer
-    model.add(Dense(3))
-    model.add(Activation('softmax'))
-    #model.add(Activation('sigmoid'))
-
-    model.compile(loss='categorical_crossentropy',
-                optimizer='adam',
-                metrics=['accuracy'])
-    
-    return model
-
-def createModel2():
-    model = Sequential()
-
-    model.add(Conv3D(32, (3, 3, 3), input_shape=(80,80,80,1), activation='relu', padding='same'))
-    #model.add(Activation('relu'))
-    #model.add(BatchNormalization())
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    #model.add(Dropout(0.05))
-
-    model.add(Conv3D(64, (3, 3, 3), activation='relu', padding='same'))
-    #model.add(Activation('relu'))
-    #model.add(BatchNormalization())
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-    #model.add(Dropout(0.05))
-
-    model.add(Conv3D(256, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(5, 5, 5)))
-
-    #model.add(Conv3D(18, (11, 11, 11)))
-    #model.add(Activation('relu'))
-    #model.add(BatchNormalization())
-    #model.add(MaxPooling3D(pool_size=(4, 4, 4)))
-    #model.add(Dropout(0.05))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    model.add(Dropout(0.25))
-    model.add(Dense(128))
-    #model.add(Activation('relu'))
-
-    #model.add(Dense(128))
-    #model.add(Activation('relu'))
-
-    #model.add(Dropout(0.15))
-    #model.add(Dense(7000))
-    #model.add(Activation('relu'))
-    #model.add(Dropout(0.15))
-    #model.add(Dense(15))
-    #model.add(Dense(10))
-    #model.add(Dense(4))
-    #model.add(Activation('relu'))
-    #model.add(Dropout(0.05))
-
-    # Output layer
-    model.add(Dense(3))
-    model.add(Activation('softmax'))
-    #model.add(Activation('sigmoid'))
-
-    model.compile(loss='binary_crossentropy',
-                optimizer='adam',
-                metrics=['accuracy'])
-    
-    return model
-
-def createModel3():
-    # import vgg16 model (downwloads the 1st time it runs) and show its structure
-    vgg16_model = keras.applications.vgg16.VGG16()
-    vgg16_model.summary()
-
-    # create a sequential model and copy the layers from the vgg16 model
-    model = Sequential()
-    for layer in vgg16_model.layers:
-        model.add(layer)
-    
-    model.summary()
-
-    # delete last dense layer (output not in desired form)
-    model.pop()
-
-    model.summary()
-
-    # prevent training of the layers' weights (already previsouly trained)
-    for layer in model.layers:
-        layer.trainable = False
-    
-    model.add(Dense(3, activation='softmax'))
-
-    model.summary()
-
-    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    return model
-
-def createModel4():
-    # create a sequential model with a layout similar to the vgg16 model
-    model = Sequential()
-    model.add(Conv3D(64, (3, 3, 3), input_shape=(80,80,80,1), activation='relu', padding='same'))
-    model.add(Conv3D(64, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(128, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(128, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(256, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(256, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(256, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(512, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(512, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(512, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    model.add(Dense(1024, activation='relu'))
-    model.add(Dense(1024, activation='relu'))
-    
-    model.add(Dense(3, activation='softmax'))
-
-    model.summary()
-
-    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    return model
-
-def createModel5():
-    # create a sequential model with a layout similar to the vgg16 model
-    model = Sequential()
-    model.add(Conv3D(16, (3, 3, 3), input_shape=(80,80,80,1), activation='relu', padding='same'))
-    model.add(Conv3D(16, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(32, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(32, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(64, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(64, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(64, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(128, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(128, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(128, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    model.add(Dense(128, activation='relu'))
-    model.add(Dense(128, activation='relu'))
-    
-    model.add(Dense(3, activation='softmax'))
-
-    model.summary()
-
-    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    return model
-
-def createModel6():
-    # create a sequential model with a layout similar to the vgg16 model
-    model = Sequential()
-    model.add(Conv3D(16, (3, 3, 3), input_shape=(80,80,80,1), activation='relu', padding='same'))
-    model.add(Conv3D(16, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(32, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(32, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(64, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(64, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(64, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(128, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(128, (3, 3, 3), activation='relu', padding='same'))
-    model.add(Conv3D(128, (3, 3, 3), activation='relu', padding='same'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    model.add(Dense(512, activation='relu'))
-    model.add(Dense(512, activation='relu'))
-    
-    model.add(Dense(3, activation='softmax'))
-
-    model.summary()
-
-    model.compile(Adam(lr=.00001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    return model
-
-def createModel7():
-    # create a sequential model with a layout similar to the vgg16 model
-    model = Sequential()
-    model.add(Conv3D(8, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
-    model.add(Conv3D(8, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(16, (3, 3, 3), activation='relu'))
-    model.add(Conv3D(16, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(32, (3, 3, 3), activation='relu'))
-    model.add(Conv3D(32, (3, 3, 3), activation='relu'))
-    model.add(Conv3D(32, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    #model.add(Conv3D(64, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(64, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(64, (3, 3, 3), activation='relu'))
-    #model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    #model.add(Dropout(0.20))
-    model.add(Dense(128, activation='relu'))
-    #model.add(Dropout(0.20))
-    model.add(Dense(128, activation='relu'))
-    
-    
-    model.add(Dense(3, activation='softmax'))
-
-    model.summary()
-
-    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    return model
-
-def createModel8():
-    # create a sequential model with a layout similar to the vgg16 model
-    model = Sequential()
-    model.add(Conv3D(64, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
-    model.add(Dropout(0.20))
-    model.add(Conv3D(64, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(128, (3, 3, 3), activation='relu'))
-    model.add(Dropout(0.20))
-    model.add(Conv3D(128, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(256, (3, 3, 3), activation='relu'))
-    model.add(Conv3D(256, (3, 3, 3), activation='relu'))
-    model.add(Dropout(0.20))
-    model.add(Conv3D(256, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-   
-    model.add(Dense(256, activation='relu'))
-    model.add(Dropout(0.20))
-    model.add(Dense(256, activation='relu'))
-    
-    
-    model.add(Dense(3, activation='softmax'))
-
-    model.summary()
-
-    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    return model
-
-def createModel9():
-    # create a sequential model with a layout similar to the vgg16 model
-    model = Sequential()
-    model.add(Conv3D(4, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
-    #model.add(Conv3D(8, (3, 3, 3), activation='relu'))
-    model.add(Dropout(0.1))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(8, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(16, (3, 3, 3), activation='relu'))
-    model.add(Dropout(0.1))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(16, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(32, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(32, (3, 3, 3), activation='relu'))
-    model.add(Dropout(0.1))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    #model.add(Dense(32, activation='relu'))
-    model.add(Dense(48, activation='relu'))
-    model.add(Dropout(0.1))
-    #model.add(Dense(32, activation='relu'))
-    model.add(Dense(48, activation='relu'))
-        
-    model.add(Dense(3, activation='softmax'))
-
-    model.summary()
-
-    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    return model
-
-def createModel10():
     # create a sequential model with a layout similar to the vgg16 model
     model = Sequential()
     model.add(Conv3D(12, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
-    #model.add(Conv3D(128, (3, 3, 3), activation='relu'))
     model.add(MaxPooling3D(pool_size=(2, 2, 2)))
 
     model.add(Conv3D(24, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(256, (3, 3, 3), activation='relu'))
     model.add(MaxPooling3D(pool_size=(2, 2, 2)))
 
     model.add(Conv3D(48, (3, 3, 3), activation='relu'))
@@ -676,7 +290,6 @@ def createModel10():
     model.add(Conv3D(48, (3, 3, 3), activation='relu'))
     model.add(Dropout(0.50))
     model.add(Conv3D(48, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(512, (3, 3, 3), activation='relu'))
     model.add(MaxPooling3D(pool_size=(2, 2, 2)))
 
     print(model.output_shape)
@@ -695,41 +308,7 @@ def createModel10():
 
     return model
 
-def createModel10dot1():
-    # create a sequential model with a layout similar to the vgg16 model
-    model = Sequential()
-    model.add(Conv3D(24, (3, 3, 3), input_shape=(80,80,80,1), activation='relu'))
-    #model.add(Conv3D(128, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(48, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(256, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    model.add(Conv3D(96, (3, 3, 3), activation='relu'))
-    model.add(Dropout(0.70))
-    model.add(Conv3D(96, (3, 3, 3), activation='relu'))
-    model.add(Dropout(0.70))
-    model.add(Conv3D(96, (3, 3, 3), activation='relu'))
-    #model.add(Conv3D(512, (3, 3, 3), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2, 2, 2)))
-
-    print(model.output_shape)
-    model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
-    print(model.output_shape)
-
-    model.add(Dropout(0.70))
-    model.add(Dense(256, activation='relu'))
-    model.add(Dropout(0.70))
-    
-    model.add(Dense(3, activation='softmax'))
-
-    model.summary()
-
-    model.compile(Adam(lr=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    return model
-
+# for cubes size 80
 def createModelA1():
     model = Sequential()
 
@@ -762,6 +341,7 @@ def createModelA1():
     
     return model
 
+# for cubes size 80
 def createModelA2():
     model = Sequential()
 
@@ -808,9 +388,9 @@ def main():
             # Memory growth must be set before GPUs have been initialized
             print(e)
 
-    # run once to get mini cubes, create "mini_cubes" folder inside 'LNDb dataset' folder
+    # run once to get mini cubes size 80, create "mini_cubes" folder inside 'LNDb dataset' folder
 
-    #cubeList, textures = getCubes()
+    #cubeList, textures = getCubes(80)
     #saveMiniCubes(cubeList)
     #print("done")
     #time.sleep(20)
@@ -822,38 +402,24 @@ def main():
     #print("done")
     #time.sleep(20)
 
-    cubeList = loadMiniCubes(-1) # change between loadMiniCubes or loadMaskedCubes
+    cubeList = loadMiniCubes(-1) # change between loadMiniCubes and loadMaskedCubes
     textures = getTextures(-1)
 
     validationSplit = 0.3
+    cubeSize = 80
 
-    valid_cube_list_training, valid_cube_list_validation, valid_textures_training, valid_textures_validation = parseTrainingData(cubeList, textures, validationSplit)
+    valid_cube_list_training, valid_cube_list_validation, valid_textures_training, valid_textures_validation = parseTrainingData(cubeList, textures, validationSplit, cubeSize)
 
-    small_textures_training = []
-    for i in range(280):
-        small_textures_training.append(valid_textures_training[i])
+    model = createModel()
+    #model = tf.keras.models.load_model('../models/model')
 
-    small_textures_training = np.array(small_textures_training)
-    small_textures_training = small_textures_training.astype(float)
 
-    small_cube_list_training = []
-    for i in range(280):
-        small_cube_list_training.append(valid_cube_list_training[i])
-
-    small_cube_list_training = np.array(small_cube_list_training).reshape(-1, 80, 80, 80, 1)
-    small_cube_list_training = small_cube_list_training.astype(float)
-
-    model = createModel10dot1()
-    #model = tf.keras.models.load_model('../models/model10')
-
-    #model.fit(small_cube_list_training, small_textures_training, batch_size=1, epochs=32, validation_data=(valid_cube_list_validation, valid_textures_validation))
-
-    model.fit(valid_cube_list_training, valid_textures_training, batch_size=1, epochs=32, validation_data=(valid_cube_list_validation, valid_textures_validation))
+    model.fit(valid_cube_list_training, valid_textures_training, batch_size=16, epochs=32, validation_data=(valid_cube_list_validation, valid_textures_validation))
 
     # folder needs to exist before instruction is ran
-    model.save('../models/model10.1')
+    model.save('../models/model')
 
-    to_predict = np.array([valid_cube_list_validation[0]]).reshape(-1, 80, 80, 80, 1)
+    to_predict = np.array([valid_cube_list_validation[0]]).reshape(-1, cubeSize, cubeSize, cubeSize, 1)
     predictions = model.predict(to_predict)
 
     print(predictions[0])
